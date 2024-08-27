@@ -6,7 +6,7 @@ use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke_signed,
     program_error::ProgramError, pubkey::Pubkey,
 };
-use spl_token::instruction::transfer;
+use spl_token_2022::{extension::StateWithExtensions, state::Mint};
 
 pub fn process_operator_withdrawal_asset(
     program_id: &Pubkey,
@@ -14,7 +14,7 @@ pub fn process_operator_withdrawal_asset(
     token_mint: Pubkey,
     amount: u64,
 ) -> ProgramResult {
-    let [operator_info, operator_withdraw_admin, operator_token_account, receiver_token_account, _token_program] =
+    let [operator_info, mint_info, operator_withdraw_admin, operator_token_account, receiver_token_account, token_program] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -43,32 +43,44 @@ pub fn process_operator_withdrawal_asset(
         .iter()
         .map(|seed| seed.as_slice())
         .collect::<Vec<&[u8]>>();
+
+    let mint_data = mint_info.try_borrow_data()?;
+    let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
     _withdraw_operator_asset(
+        token_program,
         operator_info,
         operator_token_account,
         receiver_token_account,
+        mint_info,
         &ncn_seeds_slice,
         amount,
+        mint.base.decimals,
     )?;
 
     Ok(())
 }
 
 fn _withdraw_operator_asset<'a, 'info>(
+    token_program: &'a AccountInfo<'info>,
     operator: &'a AccountInfo<'info>,
     operator_token_account: &'a AccountInfo<'info>,
     receiver_token_account: &'a AccountInfo<'info>,
+    mint: &'a AccountInfo<'info>,
     seeds: &[&[u8]],
     amount: u64,
+    decimals: u8,
 ) -> ProgramResult {
     invoke_signed(
-        &transfer(
-            &spl_token::id(),
+        &spl_token_2022::instruction::transfer_checked(
+            token_program.key,
             operator_token_account.key,
+            mint.key,
             receiver_token_account.key,
             operator.key,
             &[],
             amount,
+            decimals,
         )?,
         &[
             operator_token_account.clone(),

@@ -1,12 +1,14 @@
 use jito_bytemuck::AccountDeserialize;
-use jito_jsm_core::loader::{load_associated_token_account, load_signer, load_token_program};
+use jito_jsm_core::loader::{load_associated_token_account, load_signer};
 use jito_restaking_core::ncn::Ncn;
 use jito_restaking_sdk::error::RestakingError;
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke_signed,
     program_error::ProgramError, pubkey::Pubkey,
 };
-use spl_token::instruction::transfer;
+use spl_token_2022::{
+    check_spl_token_program_account, extension::StateWithExtensions, state::Mint,
+};
 
 pub fn process_ncn_withdraw_asset(
     program_id: &Pubkey,
@@ -14,7 +16,7 @@ pub fn process_ncn_withdraw_asset(
     token_mint: Pubkey,
     amount: u64,
 ) -> ProgramResult {
-    let [ncn_info, ncn_token_account, receiver_token_account, withdraw_admin, token_program] =
+    let [ncn_info, mint_info, ncn_token_account, receiver_token_account, withdraw_admin, token_program] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -30,7 +32,8 @@ pub fn process_ncn_withdraw_asset(
         &token_mint,
     )?;
     load_signer(withdraw_admin, false)?;
-    load_token_program(token_program)?;
+    // load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
 
     // The Ncn withdraw admin shall be the signer of the transaction
     if ncn.withdraw_admin.ne(withdraw_admin.key) {
@@ -45,32 +48,43 @@ pub fn process_ncn_withdraw_asset(
         .map(|seed| seed.as_slice())
         .collect::<Vec<&[u8]>>();
 
+    let mint_data = mint_info.try_borrow_data()?;
+    let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
     _withdraw_ncn_asset(
+        token_program,
         ncn_info,
         ncn_token_account,
         receiver_token_account,
+        mint_info,
         &ncn_seeds_slice,
         amount,
+        mint.base.decimals,
     )?;
 
     Ok(())
 }
 
 fn _withdraw_ncn_asset<'a, 'info>(
+    token_program: &'a AccountInfo<'info>,
     ncn: &'a AccountInfo<'info>,
     ncn_token_account: &'a AccountInfo<'info>,
     receiver_token_account: &'a AccountInfo<'info>,
+    mint: &'a AccountInfo<'info>,
     seeds: &[&[u8]],
     amount: u64,
+    decimals: u8,
 ) -> ProgramResult {
     invoke_signed(
-        &transfer(
-            &spl_token::id(),
+        &spl_token_2022::instruction::transfer_checked(
+            &token_program.key,
             ncn_token_account.key,
+            mint.key,
             receiver_token_account.key,
             ncn.key,
             &[],
             amount,
+            decimals,
         )?,
         &[
             ncn_token_account.clone(),

@@ -17,8 +17,6 @@ jito-jsm-core = { workspace = true }
 jito-vault-sdk = { workspace = true }
 shank = { workspace = true }
 solana-program = { workspace = true }
-spl-associated-token-account = { workspace = true }
-spl-token = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
