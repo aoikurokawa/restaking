@@ -1,12 +1,12 @@
 use jito_bytemuck::AccountDeserialize;
-use jito_jsm_core::loader::{load_associated_token_account, load_token_mint, load_token_program};
+use jito_jsm_core::loader::{load_associated_token_account, load_token_mint};
 use jito_vault_core::{config::Config, vault::Vault};
 use solana_program::{
     account_info::AccountInfo, clock::Clock, entrypoint::ProgramResult, msg,
     program::invoke_signed, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_token::{instruction::mint_to, state::Account};
+use spl_token_2022::{instruction::mint_to, state::Account, check_spl_token_program_account};
 
 pub fn process_update_vault_balance(
     program_id: &Pubkey,
@@ -30,7 +30,7 @@ pub fn process_update_vault_balance(
     load_token_mint(vrt_mint)?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, vrt_mint.key)?;
     load_associated_token_account(vault_token_account, vault_info.key, &vault.supported_mint)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
 
     vault.check_update_state_ok(Clock::get()?.slot, config.epoch_length())?;
     vault.check_vrt_mint(vrt_mint.key)?;
@@ -50,7 +50,7 @@ pub fn process_update_vault_balance(
 
         invoke_signed(
             &mint_to(
-                &spl_token::id(),
+                token_program.key,
                 vrt_mint.key,
                 vault_fee_token_account.key,
                 vault_info.key,

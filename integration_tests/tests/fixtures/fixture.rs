@@ -177,10 +177,11 @@ impl TestBuilder {
         Ok(clock.slot)
     }
 
-    pub fn vault_program_client(&self) -> VaultProgramClient {
+    pub fn vault_program_client(&self, token_program_id: Pubkey) -> VaultProgramClient {
         VaultProgramClient::new(
             self.context.banks_client.clone(),
             self.context.payer.insecure_clone(),
+            token_program_id,
         )
     }
 
@@ -199,8 +200,9 @@ impl TestBuilder {
         reward_fee_bps: u16,
         num_operators: u16,
         slasher_amounts: &[u64],
+        token_program_id: Pubkey,
     ) -> TestResult<ConfiguredVault> {
-        let mut vault_program_client = self.vault_program_client();
+        let mut vault_program_client = self.vault_program_client(token_program_id);
         let mut restaking_program_client = self.restaking_program_client();
 
         let (vault_config_admin, vault_root) = vault_program_client

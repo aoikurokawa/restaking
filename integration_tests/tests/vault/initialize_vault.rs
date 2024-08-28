@@ -6,10 +6,12 @@ mod tests {
     use crate::fixtures::{fixture::TestBuilder, vault_client::VaultRoot};
 
     #[tokio::test]
-    async fn test_initialize_vault_ok() {
+    #[test_case(spl_token::id(); "token")]
+    #[test_case(spl_token_2022::id(); "token-2022")]
+    async fn test_initialize_vault_ok(token_program_id: Pubkey) {
         let fixture = TestBuilder::new().await;
 
-        let mut vault_program_client = fixture.vault_program_client();
+        let mut vault_program_client = fixture.vault_program_client(token_program_id);
 
         let (
             _config_admin,

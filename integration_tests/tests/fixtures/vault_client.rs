@@ -59,13 +59,15 @@ pub struct VaultStakerWithdrawalTicketRoot {
 pub struct VaultProgramClient {
     banks_client: BanksClient,
     payer: Keypair,
+    token_program_id: Pubkey,
 }
 
 impl VaultProgramClient {
-    pub const fn new(banks_client: BanksClient, payer: Keypair) -> Self {
+    pub const fn new(banks_client: BanksClient, payer: Keypair, token_program_id: Pubkey) -> Self {
         Self {
             banks_client,
             payer,
+            token_program_id,
         }
     }
 
@@ -691,6 +693,7 @@ impl VaultProgramClient {
                 &token_mint.pubkey(),
                 &vault_admin.pubkey(),
                 &vault_base.pubkey(),
+                &self.token_program_id,
                 deposit_fee_bps,
                 withdrawal_fee_bps,
                 reward_fee_bps,

@@ -1,5 +1,5 @@
 use jito_bytemuck::AccountDeserialize;
-use jito_jsm_core::loader::{load_associated_token_account, load_signer, load_token_program};
+use jito_jsm_core::loader::{load_associated_token_account, load_signer};
 use jito_restaking_core::{
     ncn::Ncn, ncn_operator_state::NcnOperatorState,
     ncn_vault_slasher_ticket::NcnVaultSlasherTicket, ncn_vault_ticket::NcnVaultTicket,
@@ -15,7 +15,7 @@ use solana_program::{
     account_info::AccountInfo, clock::Clock, entrypoint::ProgramResult, msg,
     program::invoke_signed, program_error::ProgramError, pubkey::Pubkey, sysvar::Sysvar,
 };
-use spl_token::instruction::transfer;
+use spl_token_2022::{check_spl_token_program_account, instruction::transfer};
 
 /// Processes the vault slash instruction: [`crate::VaultInstruction::Slash`]
 pub fn process_slash(
@@ -123,7 +123,7 @@ pub fn process_slash(
         )?;
     load_associated_token_account(vault_token_account, vault_info.key, &vault.supported_mint)?;
     load_associated_token_account(slasher_token_account, slasher.key, &vault.supported_mint)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
 
     let slot = Clock::get()?.slot;
     let epoch_length = config.epoch_length();
@@ -167,7 +167,7 @@ pub fn process_slash(
     drop(vault_data);
     invoke_signed(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             vault_token_account.key,
             slasher_token_account.key,
             vault_info.key,

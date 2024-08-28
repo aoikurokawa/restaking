@@ -5,7 +5,6 @@ use jito_jsm_core::{
     create_account,
     loader::{
         load_associated_token_account, load_signer, load_system_account, load_system_program,
-        load_token_program,
     },
 };
 use jito_vault_core::{
@@ -15,7 +14,7 @@ use solana_program::{
     account_info::AccountInfo, clock::Clock, entrypoint::ProgramResult, msg, program::invoke,
     program_error::ProgramError, pubkey::Pubkey, rent::Rent, sysvar::Sysvar,
 };
-use spl_token::instruction::transfer;
+use spl_token_2022::{check_spl_token_program_account, instruction::transfer};
 
 /// Enqueues a withdraw into the VaultStakerWithdrawalTicket account, transferring the amount from the
 /// staker's VRT token account to the VaultStakerWithdrawalTicket VRT token account. It also queues
@@ -57,7 +56,7 @@ pub fn process_enqueue_withdrawal(
     load_signer(staker, false)?;
     load_associated_token_account(staker_vrt_token_account, staker.key, &vault.vrt_mint)?;
     load_signer(base, false)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
     load_system_program(system_program)?;
 
     // The VaultStakerWithdrawalTicket shall be at the canonical PDA
@@ -114,7 +113,7 @@ pub fn process_enqueue_withdrawal(
     // by the VaultStakerWithdrawalTicket
     invoke(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             staker_vrt_token_account.key,
             vault_staker_withdrawal_ticket_token_account.key,
             staker.key,

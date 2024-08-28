@@ -1,7 +1,6 @@
 use jito_bytemuck::AccountDeserialize;
 use jito_jsm_core::loader::{
     load_associated_token_account, load_signer, load_system_program, load_token_mint,
-    load_token_program,
 };
 use jito_vault_core::{
     config::Config,
@@ -16,7 +15,10 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_token::instruction::{burn, transfer};
+use spl_token_2022::{
+    check_spl_token_program_account,
+    instruction::{burn, transfer},
+};
 
 pub fn process_burn(
     program_id: &Pubkey,
@@ -46,7 +48,7 @@ pub fn process_burn(
     load_associated_token_account(staker_token_account, staker.key, &vault.supported_mint)?;
     load_associated_token_account(staker_vrt_token_account, staker.key, &vault.vrt_mint)?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, &vault.vrt_mint)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
     load_system_program(system_program)?;
 
     // The vault VRT mint shall be correct
@@ -64,7 +66,7 @@ pub fn process_burn(
     // Burn the VRT tokens from the staker's account
     invoke(
         &burn(
-            &spl_token::id(),
+            token_program.key,
             staker_vrt_token_account.key,
             vrt_mint.key,
             staker.key,
@@ -80,7 +82,7 @@ pub fn process_burn(
     // Transfer the assets from the staker to the vault fee account
     invoke(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             staker_vrt_token_account.key,
             vault_fee_token_account.key,
             staker.key,
@@ -101,7 +103,7 @@ pub fn process_burn(
     drop(vault_data);
     invoke_signed(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             vault_token_account.key,
             staker_token_account.key,
             vault_info.key,

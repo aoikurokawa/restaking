@@ -3,9 +3,7 @@ use std::mem::size_of;
 use jito_bytemuck::{AccountDeserialize, Discriminator};
 use jito_jsm_core::{
     create_account,
-    loader::{
-        load_signer, load_system_account, load_system_program, load_token_mint, load_token_program,
-    },
+    loader::{load_signer, load_system_account, load_system_program, load_token_mint},
 };
 use jito_vault_core::{config::Config, vault::Vault};
 use jito_vault_sdk::error::VaultError;
@@ -14,7 +12,7 @@ use solana_program::{
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
     system_instruction, sysvar::Sysvar,
 };
-use spl_token::state::Mint;
+use spl_token_2022::{check_spl_token_program_account, state::Mint};
 
 /// Processes the create instruction: [`crate::VaultInstruction::InitializeVault`]
 pub fn process_initialize_vault(
@@ -36,7 +34,7 @@ pub fn process_initialize_vault(
     load_signer(admin, true)?;
     load_signer(base, false)?;
     load_system_program(system_program)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
 
     // The vault account shall be at the canonical PDA
     let (vault_pubkey, vault_bump, mut vault_seeds) =
@@ -64,8 +62,8 @@ pub fn process_initialize_vault(
         )?;
 
         invoke(
-            &spl_token::instruction::initialize_mint2(
-                &spl_token::id(),
+            &spl_token_2022::instruction::initialize_mint2(
+                token_program.key,
                 vrt_mint.key,
                 vault.key,
                 None,

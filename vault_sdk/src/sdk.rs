@@ -38,6 +38,7 @@ pub fn initialize_vault(
     token_mint: &Pubkey,
     admin: &Pubkey,
     base: &Pubkey,
+    token_program: &Pubkey,
     deposit_fee_bps: u16,
     withdrawal_fee_bps: u16,
     reward_fee_bps: u16,
@@ -50,7 +51,7 @@ pub fn initialize_vault(
         AccountMeta::new(*admin, true),
         AccountMeta::new_readonly(*base, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(*token_program, false),
     ];
     Instruction {
         program_id: *program_id,

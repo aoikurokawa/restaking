@@ -1,7 +1,5 @@
 use jito_bytemuck::AccountDeserialize;
-use jito_jsm_core::loader::{
-    load_associated_token_account, load_signer, load_token_mint, load_token_program,
-};
+use jito_jsm_core::loader::{load_associated_token_account, load_signer, load_token_mint};
 use jito_vault_core::{
     config::Config,
     vault::{MintSummary, Vault},
@@ -15,7 +13,10 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_token::instruction::{mint_to, transfer};
+use spl_token_2022::{
+    check_spl_token_program_account,
+    instruction::{mint_to, transfer},
+};
 
 /// Processes the mint instruction: [`crate::VaultInstruction::MintTo`]
 ///
@@ -51,7 +52,7 @@ pub fn process_mint(
     load_associated_token_account(vault_token_account, vault_info.key, &vault.supported_mint)?;
     load_associated_token_account(depositor_vrt_token_account, depositor.key, vrt_mint.key)?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, vrt_mint.key)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
 
     vault.check_mint_burn_admin(optional_accounts.first())?;
     vault.check_vrt_mint(vrt_mint.key)?;
@@ -66,7 +67,7 @@ pub fn process_mint(
     {
         invoke(
             &transfer(
-                &spl_token::id(),
+                token_program.key,
                 depositor_token_account.key,
                 vault_token_account.key,
                 depositor.key,
@@ -91,7 +92,7 @@ pub fn process_mint(
     {
         invoke_signed(
             &mint_to(
-                &spl_token::id(),
+                token_program.key,
                 vrt_mint.key,
                 depositor_vrt_token_account.key,
                 vault_info.key,
@@ -108,7 +109,7 @@ pub fn process_mint(
 
         invoke_signed(
             &mint_to(
-                &spl_token::id(),
+                token_program.key,
                 vrt_mint.key,
                 vault_fee_token_account.key,
                 vault_info.key,

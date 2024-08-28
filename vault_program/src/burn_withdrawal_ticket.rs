@@ -1,9 +1,7 @@
 use jito_bytemuck::AccountDeserialize;
 use jito_jsm_core::{
     close_program_account,
-    loader::{
-        load_associated_token_account, load_system_program, load_token_mint, load_token_program,
-    },
+    loader::{load_associated_token_account, load_system_program, load_token_mint},
 };
 use jito_vault_core::{
     config::Config,
@@ -15,7 +13,10 @@ use solana_program::{
     account_info::AccountInfo, clock::Clock, entrypoint::ProgramResult, msg,
     program::invoke_signed, program_error::ProgramError, pubkey::Pubkey, sysvar::Sysvar,
 };
-use spl_token::instruction::{burn, close_account, transfer};
+use spl_token_2022::{
+    check_spl_token_program_account,
+    instruction::{burn, close_account, transfer},
+};
 
 /// Burns the withdrawal ticket, transferring the assets to the staker and closing the withdrawal ticket.
 ///
@@ -59,7 +60,7 @@ pub fn process_burn_withdrawal_ticket(
         &vault.vrt_mint,
     )?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, &vault.vrt_mint)?;
-    load_token_program(token_program)?;
+    check_spl_token_program_account(token_program.key)?;
     load_system_program(system_program)?;
 
     vault.check_mint_burn_admin(optional_accounts.first())?;
@@ -95,7 +96,7 @@ pub fn process_burn_withdrawal_ticket(
     // transfer fee to fee wallet
     invoke_signed(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             vault_staker_withdrawal_ticket_token_account.key,
             vault_fee_token_account.key,
             vault_staker_withdrawal_ticket_info.key,
@@ -112,7 +113,7 @@ pub fn process_burn_withdrawal_ticket(
     // burn the VRT tokens
     invoke_signed(
         &burn(
-            &spl_token::id(),
+            token_program.key,
             vault_staker_withdrawal_ticket_token_account.key,
             vrt_mint.key,
             vault_staker_withdrawal_ticket_info.key,
@@ -130,7 +131,7 @@ pub fn process_burn_withdrawal_ticket(
     // close token account
     invoke_signed(
         &close_account(
-            &spl_token::id(),
+            token_program.key,
             vault_staker_withdrawal_ticket_token_account.key,
             staker.key,
             vault_staker_withdrawal_ticket_info.key,
@@ -152,7 +153,7 @@ pub fn process_burn_withdrawal_ticket(
     drop(vault_data); // avoid double borrow
     invoke_signed(
         &transfer(
-            &spl_token::id(),
+            token_program.key,
             vault_token_account.key,
             staker_token_account.key,
             vault_info.key,

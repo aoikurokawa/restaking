@@ -2363,6 +2363,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
+ "spl-token-2022 3.0.4",
  "thiserror",
 ]
 
@@ -2449,6 +2450,7 @@ dependencies = [
  "solana-security-txt",
  "spl-associated-token-account",
  "spl-token",
+ "test-case",
  "thiserror",
  "tokio",
 ]
