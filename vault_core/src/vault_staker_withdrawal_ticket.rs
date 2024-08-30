@@ -31,6 +31,9 @@ pub struct VaultStakerWithdrawalTicket {
     /// The slot the withdrawal was enqueued
     slot_unstaked: PodU64,
 
+    /// The slot the withdrawal was enqueued
+    index: PodU64,
+
     /// The bump seed used to create the PDA
     pub bump: u8,
 
@@ -44,6 +47,7 @@ impl VaultStakerWithdrawalTicket {
         base: Pubkey,
         vrt_amount: u64,
         slot_unstaked: u64,
+        index: PodU64,
         bump: u8,
     ) -> Self {
         Self {
@@ -52,6 +56,7 @@ impl VaultStakerWithdrawalTicket {
             base,
             vrt_amount: PodU64::from(vrt_amount),
             slot_unstaked: PodU64::from(slot_unstaked),
+            index,
             bump,
             reserved: [0; 263],
         }
