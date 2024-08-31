@@ -6,6 +6,8 @@ use jito_vault_sdk::error::VaultError;
 use shank::ShankAccount;
 use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
 
+use crate::vault::Vault;
+
 impl Discriminator for VaultStakerWithdrawalTicket {
     const DISCRIMINATOR: u8 = 7;
 }
@@ -47,7 +49,7 @@ impl VaultStakerWithdrawalTicket {
         base: Pubkey,
         vrt_amount: u64,
         slot_unstaked: u64,
-        index: PodU64,
+        index: u64,
         bump: u8,
     ) -> Self {
         Self {
@@ -56,7 +58,7 @@ impl VaultStakerWithdrawalTicket {
             base,
             vrt_amount: PodU64::from(vrt_amount),
             slot_unstaked: PodU64::from(slot_unstaked),
-            index,
+            index: PodU64::from(index),
             bump,
             reserved: [0; 263],
         }
@@ -78,15 +80,24 @@ impl VaultStakerWithdrawalTicket {
         Ok(())
     }
 
-    /// In order for the ticket to be withdrawable, it needs to be more than one **full** epoch
-    /// since unstaking
-    pub fn is_withdrawable(&self, slot: u64, epoch_length: u64) -> Result<bool, ProgramError> {
+    /// In order for the ticket to be withdrawable,
+    /// * it needs to be more than one **full** epoch since unstaking
+    /// *
+    pub fn is_withdrawable(
+        &self,
+        slot: u64,
+        epoch_length: u64,
+        curr_withdraw_ticket_index: u64,
+    ) -> Result<bool, ProgramError> {
         let current_epoch = slot.checked_div(epoch_length).unwrap();
         let epoch_unstaked = self.slot_unstaked().checked_div(epoch_length).unwrap();
-        if current_epoch
-            <= epoch_unstaked
-                .checked_add(1)
-                .ok_or(ProgramError::ArithmeticOverflow)?
+        let index: u64 = self.index.into();
+
+        if index == curr_withdraw_ticket_index
+            && current_epoch
+                <= epoch_unstaked
+                    .checked_add(1)
+                    .ok_or(ProgramError::ArithmeticOverflow)?
         {
             Ok(false)
         } else {

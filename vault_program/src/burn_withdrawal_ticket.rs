@@ -67,7 +67,11 @@ pub fn process_burn_withdrawal_ticket(
     vault.check_update_state_ok(Clock::get()?.slot, config.epoch_length())?;
     vault_staker_withdrawal_ticket.check_staker(staker.key)?;
 
-    if !vault_staker_withdrawal_ticket.is_withdrawable(Clock::get()?.slot, config.epoch_length())? {
+    if !vault_staker_withdrawal_ticket.is_withdrawable(
+        Clock::get()?.slot,
+        config.epoch_length(),
+        vault.first_unprocessed_ticket_index(),
+    )? {
         msg!("Vault staker withdrawal ticket is not withdrawable");
         return Err(VaultError::VaultStakerWithdrawalTicketNotWithdrawable.into());
     }
@@ -78,6 +82,7 @@ pub fn process_burn_withdrawal_ticket(
         out_amount,
     } = vault.burn_with_fee(vault_staker_withdrawal_ticket.vrt_amount(), min_amount_out)?;
     vault.decrement_vrt_ready_to_claim_amount(vault_staker_withdrawal_ticket.vrt_amount())?;
+    vault.increment_first_unprocessed_ticket_index();
 
     let (_, vault_staker_withdraw_bump, mut vault_staker_withdraw_seeds) =
         VaultStakerWithdrawalTicket::find_program_address(

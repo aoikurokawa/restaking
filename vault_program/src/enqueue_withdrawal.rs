@@ -108,11 +108,12 @@ pub fn process_enqueue_withdrawal(
         *base.key,
         vrt_amount,
         Clock::get()?.slot,
-        vault.
+        vault.next_withdrawal_ticket_index(),
         vault_staker_withdrawal_ticket_bump,
     );
 
     vault.increment_vrt_enqueued_for_cooldown_amount(vrt_amount)?;
+    vault.increment_next_withdrawal_ticket_index();
 
     // Withdraw funds from the staker's VRT account, transferring them to an ATA owned
     // by the VaultStakerWithdrawalTicket

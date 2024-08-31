@@ -125,7 +125,7 @@ pub struct Vault {
     /// The slot of the last time the delegations were updated
     last_full_state_update_slot: PodU64,
 
-    next_ticket_index: PodU64,
+    next_withdrawal_ticket_index: PodU64,
 
     first_unprocessed_ticket_index: PodU64,
 
@@ -182,7 +182,7 @@ impl Vault {
             vrt_ready_to_claim_amount: PodU64::from(0),
             last_fee_change_slot: PodU64::from(0),
             last_full_state_update_slot: PodU64::from(0),
-            next_ticket_index: PodU64::from(0),
+            next_withdrawal_ticket_index: PodU64::from(0),
             first_unprocessed_ticket_index: PodU64::from(0),
             deposit_fee_bps: PodU16::from(deposit_fee_bps),
             withdrawal_fee_bps: PodU16::from(withdrawal_fee_bps),
@@ -220,8 +220,12 @@ impl Vault {
         self.last_full_state_update_slot.into()
     }
 
-    pub fn next_ticket_index(&self) -> u64 {
-        self.next_ticket_index.into()
+    pub fn next_withdrawal_ticket_index(&self) -> u64 {
+        self.next_withdrawal_ticket_index.into()
+    }
+
+    pub fn first_unprocessed_ticket_index(&self) -> u64 {
+        self.first_unprocessed_ticket_index.into()
     }
 
     pub fn vrt_supply(&self) -> u64 {
@@ -279,14 +283,15 @@ impl Vault {
         Ok(())
     }
 
-    pub fn increment_next_ticket_index(&mut self) -> Result<(), VaultError> {
-        let next_ticket_index: u64 = self.next_ticket_index.into();
-        self.next_ticket_index = match next_ticket_index.checked_add(1) {
-            Some(index) => PodU64::from(index),
-            None => PodU64::from(0),
-        };
+    pub fn increment_next_withdrawal_ticket_index(&mut self) {
+        let next_ticket_index: u64 = self.next_withdrawal_ticket_index.into();
+        self.next_withdrawal_ticket_index = PodU64::from(next_ticket_index.wrapping_add(1));
+    }
 
-        Ok(())
+    pub fn increment_first_unprocessed_ticket_index(&mut self) {
+        let first_unprocessed_ticket_index: u64 = self.first_unprocessed_ticket_index.into();
+        self.first_unprocessed_ticket_index =
+            PodU64::from(first_unprocessed_ticket_index.wrapping_add(1));
     }
 
     pub fn vrt_enqueued_for_cooldown_amount(&self) -> u64 {
