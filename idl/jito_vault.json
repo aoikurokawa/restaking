@@ -88,6 +88,10 @@
         {
           "name": "rewardFeeBps",
           "type": "u16"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
         }
       ],
       "discriminant": {
@@ -2316,10 +2320,35 @@
       "code": 1039,
       "name": "OperatorOverflow",
       "msg": "OperatorOverflow"
+    },
+    {
+      "code": 1040,
+      "name": "VaultDelegationZero",
+      "msg": "VaultDelegationZero"
+    },
+    {
+      "code": 1041,
+      "name": "VaultCooldownZero",
+      "msg": "VaultCooldownZero"
+    },
+    {
+      "code": 1042,
+      "name": "VaultBurnZero",
+      "msg": "VaultBurnZero"
+    },
+    {
+      "code": 1043,
+      "name": "VaultEnqueueWithdrawalAmountZero",
+      "msg": "VaultEnqueueWithdrawalAmountZero"
+    },
+    {
+      "code": 1044,
+      "name": "VaultMintZero",
+      "msg": "VaultMintZero"
     }
   ],
   "metadata": {
     "origin": "shank",
-    "address": "AByZUmjepqbSmpLPhr8nc28Shj5h4HYLQe1bKiiR7vYK"
+    "address": "34X2uqBhEGiWHu43RDEMwrMqXF4CpCPEZNaKdAaUS9jx"
   }
 }
