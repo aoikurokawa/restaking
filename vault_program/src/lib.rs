@@ -66,7 +66,7 @@ use crate::{
     withdrawal_asset::process_withdrawal_asset,
 };
 
-declare_id!(str_to_pubkey(env!("VAULT_PROGRAM_ID")));
+declare_id!("BLCDL7LqxaYWxSEkayc4VYjs3iCNJJw8SQzsvEL2uVT");
 
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
