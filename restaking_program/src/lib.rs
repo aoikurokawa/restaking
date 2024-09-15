@@ -56,7 +56,7 @@ use crate::{
     warmup_operator_vault_ticket::process_warmup_operator_vault_ticket,
 };
 
-declare_id!("5b2dHDz9DLhXnwQDG612bgtBGJD62Riw9s9eYuDT3Zma");
+declare_id!("92iN43wDswEfAt2WhQxteWgkjQgSHd79w9GwQJmX8Myj");
 
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
