@@ -97,7 +97,6 @@ pub fn process_burn_withdrawal_ticket(
         out_amount,
     } = vault.burn_with_fee(vault_staker_withdrawal_ticket.vrt_amount(), min_amount_out)?;
     vault.decrement_vrt_ready_to_claim_amount(vault_staker_withdrawal_ticket.vrt_amount())?;
-    vault.increment_first_unprocessed_ticket_index();
 
     let (_, vault_staker_withdraw_bump, mut vault_staker_withdraw_seeds) =
         VaultStakerWithdrawalTicket::find_program_address(

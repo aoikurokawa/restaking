@@ -31,9 +31,6 @@ pub struct VaultStakerWithdrawalTicket {
     /// The slot the withdrawal was enqueued
     slot_unstaked: PodU64,
 
-    /// The slot the withdrawal was enqueued
-    index: PodU64,
-
     /// The bump seed used to create the PDA
     pub bump: u8,
 
@@ -47,7 +44,6 @@ impl VaultStakerWithdrawalTicket {
         base: Pubkey,
         vrt_amount: u64,
         slot_unstaked: u64,
-        index: u64,
         bump: u8,
     ) -> Self {
         Self {
@@ -56,7 +52,6 @@ impl VaultStakerWithdrawalTicket {
             base,
             vrt_amount: PodU64::from(vrt_amount),
             slot_unstaked: PodU64::from(slot_unstaked),
-            index: PodU64::from(index),
             bump,
             reserved: [0; 263],
         }
@@ -76,31 +71,6 @@ impl VaultStakerWithdrawalTicket {
             return Err(VaultError::VaultStakerWithdrawalTicketInvalidStaker);
         }
         Ok(())
-    }
-
-    /// In order for the ticket to be withdrawable,
-    /// * it needs to be more than one **full** epoch since unstaking
-    /// *
-    pub fn is_withdrawable(
-        &self,
-        slot: u64,
-        epoch_length: u64,
-        curr_withdraw_ticket_index: u64,
-    ) -> Result<bool, ProgramError> {
-        let current_epoch = slot.checked_div(epoch_length).unwrap();
-        let epoch_unstaked = self.slot_unstaked().checked_div(epoch_length).unwrap();
-        let index: u64 = self.index.into();
-
-        if index == curr_withdraw_ticket_index
-            && current_epoch
-                <= epoch_unstaked
-                    .checked_add(1)
-                    .ok_or(ProgramError::ArithmeticOverflow)?
-        {
-            Ok(false)
-        } else {
-            Ok(true)
-        }
     }
 
     /// Returns the seeds for the PDA

@@ -86,13 +86,7 @@ mod tests {
             .unwrap();
 
         let transaction_error = vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await;
         assert_vault_error(
             transaction_error,
@@ -188,13 +182,7 @@ mod tests {
             .unwrap();
 
         let transaction_error = vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await;
         assert_vault_error(
             transaction_error,
@@ -302,13 +290,7 @@ mod tests {
             .unwrap();
 
         vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await
             .unwrap();
 
@@ -415,13 +397,7 @@ mod tests {
             .unwrap();
 
         let result = vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await;
         assert_vault_error(
             result,
@@ -440,13 +416,7 @@ mod tests {
             .await
             .unwrap();
         let result = vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await;
         assert_vault_error(
             result,
@@ -466,13 +436,7 @@ mod tests {
             .unwrap();
 
         vault_program_client
-            .do_burn_withdrawal_ticket(
-                &vault_root,
-                &depositor,
-                &base,
-                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
-                MINT_AMOUNT,
-            )
+            .do_burn_withdrawal_ticket(&vault_root, &depositor, &base, MINT_AMOUNT)
             .await
             .unwrap();
         let staker_token_account = fixture

@@ -125,10 +125,6 @@ pub struct Vault {
     /// The slot of the last time the delegations were updated
     last_full_state_update_slot: PodU64,
 
-    next_withdrawal_ticket_index: PodU64,
-
-    first_unprocessed_ticket_index: PodU64,
-
     /// The deposit fee in basis points
     deposit_fee_bps: PodU16,
 
@@ -158,7 +154,6 @@ impl Vault {
         reward_fee_bps: u16,
         bump: u8,
     ) -> Self {
-        let u64_zero = PodU64::from(0);
         Self {
             base,
             vrt_mint,
@@ -182,14 +177,12 @@ impl Vault {
             vrt_ready_to_claim_amount: PodU64::from(0),
             last_fee_change_slot: PodU64::from(0),
             last_full_state_update_slot: PodU64::from(0),
-            next_withdrawal_ticket_index: PodU64::from(0),
-            first_unprocessed_ticket_index: PodU64::from(0),
             deposit_fee_bps: PodU16::from(deposit_fee_bps),
             withdrawal_fee_bps: PodU16::from(withdrawal_fee_bps),
             reward_fee_bps: PodU16::from(reward_fee_bps),
             ncn_count: PodU64::from(0),
             operator_count: PodU64::from(0),
-            slasher_count: u64_zero,
+            slasher_count: PodU64::from(0),
             bump,
             delegation_state: DelegationState::default(),
             reserved: [0; 263],
@@ -218,14 +211,6 @@ impl Vault {
 
     pub fn last_full_state_update_slot(&self) -> u64 {
         self.last_full_state_update_slot.into()
-    }
-
-    pub fn next_withdrawal_ticket_index(&self) -> u64 {
-        self.next_withdrawal_ticket_index.into()
-    }
-
-    pub fn first_unprocessed_ticket_index(&self) -> u64 {
-        self.first_unprocessed_ticket_index.into()
     }
 
     pub fn vrt_supply(&self) -> u64 {
@@ -281,17 +266,6 @@ impl Vault {
             .ok_or(VaultError::OperatorOverflow)?;
         self.operator_count = PodU64::from(operator_count);
         Ok(())
-    }
-
-    pub fn increment_next_withdrawal_ticket_index(&mut self) {
-        let next_ticket_index: u64 = self.next_withdrawal_ticket_index.into();
-        self.next_withdrawal_ticket_index = PodU64::from(next_ticket_index.wrapping_add(1));
-    }
-
-    pub fn increment_first_unprocessed_ticket_index(&mut self) {
-        let first_unprocessed_ticket_index: u64 = self.first_unprocessed_ticket_index.into();
-        self.first_unprocessed_ticket_index =
-            PodU64::from(first_unprocessed_ticket_index.wrapping_add(1));
     }
 
     pub fn vrt_enqueued_for_cooldown_amount(&self) -> u64 {

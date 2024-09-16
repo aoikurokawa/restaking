@@ -925,13 +925,6 @@ impl VaultProgramClient {
 
         self.create_ata(&vault.vrt_mint, &vault_staker_withdrawal_ticket)
             .await?;
-        let vault_staker_withdrawal_ticket_queue =
-            VaultStakerWithdrawalTicketQueue::find_program_address(
-                &jito_vault_program::id(),
-                &vault_root.vault_pubkey,
-                &base.pubkey(),
-            )
-            .0;
 
         self.enqueue_withdraw(
             &Config::find_program_address(&jito_vault_program::id()).0,
@@ -941,7 +934,7 @@ impl VaultProgramClient {
             depositor,
             &depositor_vrt_token_account,
             &base,
-            &vault_staker_withdrawal_ticket_queue,
+            &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
             amount,
         )
         .await?;
@@ -1211,7 +1204,6 @@ impl VaultProgramClient {
         &mut self,
         vault_root: &VaultRoot,
         staker: &Keypair,
-        vault_staker_withdrawal_ticket_base: &Pubkey,
         vault_staker_withdrawal_ticket_queue_base: &Pubkey,
         min_amount_out: u64,
     ) -> Result<(), TestError> {
@@ -1222,13 +1214,6 @@ impl VaultProgramClient {
             vault_staker_withdrawal_ticket_queue_base,
         )
         .0;
-        let vault_staker_withdrawal_ticket_queue =
-            VaultStakerWithdrawalTicketQueue::find_program_address(
-                &jito_vault_program::id(),
-                &vault_root.vault_pubkey,
-                vault_staker_withdrawal_ticket_base,
-            )
-            .0;
 
         self.burn_withdrawal_ticket(
             &Config::find_program_address(&jito_vault_program::id()).0,
@@ -1240,7 +1225,7 @@ impl VaultProgramClient {
             &vault_staker_withdrawal_ticket,
             &get_associated_token_address(&vault_staker_withdrawal_ticket, &vault.vrt_mint),
             &get_associated_token_address(&vault.fee_wallet, &vault.vrt_mint),
-            &vault_staker_withdrawal_ticket_queue,
+            &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
             min_amount_out,
         )
         .await?;
