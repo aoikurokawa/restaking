@@ -9,7 +9,12 @@ use jito_jsm_core::{
     },
 };
 use jito_vault_core::{
-    config::Config, vault::Vault, vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    config::Config,
+    vault::Vault,
+    vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    vault_staker_withdrawal_ticket_queue::{
+        VaultStakerWithdrawalTicketEntry, VaultStakerWithdrawalTicketQueue,
+    },
 };
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
@@ -35,7 +40,7 @@ pub fn process_enqueue_withdrawal(
 ) -> ProgramResult {
     let (required_accounts, optional_accounts) = accounts.split_at(9);
 
-    let [config, vault_info, vault_staker_withdrawal_ticket, vault_staker_withdrawal_ticket_token_account, staker, staker_vrt_token_account, base, token_program, system_program] =
+    let [config, vault_info, vault_staker_withdrawal_ticket, vault_staker_withdrawal_ticket_token_account, staker, staker_vrt_token_account, base, vault_staker_withdrawal_ticket_queue, token_program, system_program] =
         required_accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -56,6 +61,12 @@ pub fn process_enqueue_withdrawal(
     load_signer(staker, false)?;
     load_associated_token_account(staker_vrt_token_account, staker.key, &vault.vrt_mint)?;
     load_signer(base, false)?;
+    VaultStakerWithdrawalTicketQueue::load(program_id, vault_staker_withdrawal_ticket_queue, true)?;
+    let mut vault_staker_withdrawal_ticket_queue_data = vault_info.data.borrow_mut();
+    let vault_staker_withdrawal_ticket_queue =
+        VaultStakerWithdrawalTicketQueue::try_from_slice_unchecked_mut(
+            &mut vault_staker_withdrawal_ticket_queue_data,
+        )?;
     load_token_program(token_program)?;
     load_system_program(system_program)?;
 
@@ -132,6 +143,12 @@ pub fn process_enqueue_withdrawal(
             staker.clone(),
         ],
     )?;
+
+    let entry = VaultStakerWithdrawalTicketEntry::new(
+        vault_staker_withdrawal_ticket_pubkey,
+        Clock::get()?.unix_timestamp as u64,
+    );
+    vault_staker_withdrawal_ticket_queue.push_back(entry);
 
     Ok(())
 }

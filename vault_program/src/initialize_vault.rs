@@ -7,7 +7,10 @@ use jito_jsm_core::{
         load_signer, load_system_account, load_system_program, load_token_mint, load_token_program,
     },
 };
-use jito_vault_core::{config::Config, vault::Vault, MAX_FEE_BPS};
+use jito_vault_core::{
+    config::Config, vault::Vault,
+    vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue, MAX_FEE_BPS,
+};
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
@@ -25,7 +28,8 @@ pub fn process_initialize_vault(
     reward_fee_bps: u16,
     decimals: u8,
 ) -> ProgramResult {
-    let [config, vault, vrt_mint, mint, admin, base, system_program, token_program] = accounts
+    let [config, vault, vrt_mint, mint, admin, base, vault_staker_withdrawal_ticket_queue, system_program, token_program] =
+        accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -121,6 +125,25 @@ pub fn process_initialize_vault(
     }
 
     config.increment_num_vaults()?;
+
+    // Initialize VaultOperatorQueue
+    {
+        msg!(
+            "Initializing VaultStakerWithdrawalTicketQueue at address: {}",
+            vault_staker_withdrawal_ticket_queue.key
+        );
+        create_account(
+            admin,
+            vault_staker_withdrawal_ticket_queue,
+            system_program,
+            program_id,
+            &Rent::get()?,
+            8_u64
+                .checked_add(size_of::<VaultStakerWithdrawalTicketQueue>() as u64)
+                .unwrap(),
+            &vault_seeds,
+        )?;
+    }
 
     Ok(())
 }

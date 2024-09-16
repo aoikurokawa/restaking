@@ -21,6 +21,7 @@ mod tests {
             VaultRoot {
                 vault_pubkey,
                 vault_admin,
+                ..
             },
         ) = vault_program_client
             .setup_config_and_vault(99, 100, 0)
