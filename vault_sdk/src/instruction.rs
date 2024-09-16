@@ -28,6 +28,14 @@ pub enum VaultInstruction {
         decimals: u8,
     },
 
+    /// Initializes the vault
+    // #[account(0, writable, name = "config")]
+    // #[account(1, writable, name = "vault")]
+    // #[account(2, name = "vault_staker_withdrawal_ticket_queue")]
+    // #[account(3, name = "system_program")]
+    // #[account(4, name = "token_program")]
+    // InitializeVaultStakerWithdrawalTicketQueue,
+
     /// Initializes a vault with an already-created VRT mint
     InitializeVaultWithMint,
 
@@ -151,9 +159,10 @@ pub enum VaultInstruction {
     #[account(4, writable, signer, name = "staker")]
     #[account(5, writable, name = "staker_vrt_token_account")]
     #[account(6, signer, name = "base")]
-    #[account(7, name = "token_program")]
-    #[account(8, name = "system_program")]
-    #[account(9, signer, optional, name = "burn_signer", description = "Signer for burning")]
+    #[account(7, name = "vault_staker_withdrawal_ticket_queue")]
+    #[account(8, name = "token_program")]
+    #[account(9, name = "system_program")]
+    #[account(10, signer, optional, name = "burn_signer", description = "Signer for burning")]
     EnqueueWithdrawal {
         amount: u64
     },
@@ -176,9 +185,10 @@ pub enum VaultInstruction {
     #[account(6, writable, name = "vault_staker_withdrawal_ticket")]
     #[account(7, writable, name = "vault_staker_withdrawal_ticket_token_account")]
     #[account(8, writable, name = "vault_fee_token_account")]
-    #[account(9, name = "token_program")]
-    #[account(10, name = "system_program")]
-    #[account(11, signer, optional, name = "burn_signer", description = "Signer for burning")]
+    #[account(9, name = "vault_staker_withdrawal_ticket_queue")]
+    #[account(10, name = "token_program")]
+    #[account(11, name = "system_program")]
+    #[account(12, signer, optional, name = "burn_signer", description = "Signer for burning")]
     BurnWithdrawTicket {
         min_amount_out: u64
     },

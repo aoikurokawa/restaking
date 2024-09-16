@@ -9,6 +9,7 @@ use jito_vault_core::{
     config::Config,
     vault::{BurnSummary, Vault},
     vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue,
 };
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
@@ -26,8 +27,8 @@ pub fn process_burn_withdrawal_ticket(
     accounts: &[AccountInfo],
     min_amount_out: u64,
 ) -> ProgramResult {
-    let (required_accounts, optional_accounts) = accounts.split_at(11);
-    let [config, vault_info, vault_token_account, vrt_mint, staker, staker_token_account, vault_staker_withdrawal_ticket_info, vault_staker_withdrawal_ticket_token_account, vault_fee_token_account, token_program, system_program] =
+    let (required_accounts, optional_accounts) = accounts.split_at(12);
+    let [config, vault_info, vault_token_account, vrt_mint, staker, staker_token_account, vault_staker_withdrawal_ticket_info, vault_staker_withdrawal_ticket_token_account, vault_fee_token_account, vault_staker_withdrawal_ticket_queue, token_program, system_program] =
         required_accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -59,6 +60,12 @@ pub fn process_burn_withdrawal_ticket(
         &vault.vrt_mint,
     )?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, &vault.vrt_mint)?;
+    VaultStakerWithdrawalTicketQueue::load(program_id, vault_staker_withdrawal_ticket_queue, true)?;
+    let mut vault_staker_withdrawal_ticket_queue_data = vault_info.data.borrow_mut();
+    let vault_staker_withdrawal_ticket_queue =
+        VaultStakerWithdrawalTicketQueue::try_from_slice_unchecked_mut(
+            &mut vault_staker_withdrawal_ticket_queue_data,
+        )?;
     load_token_program(token_program)?;
     load_system_program(system_program)?;
 
@@ -67,9 +74,24 @@ pub fn process_burn_withdrawal_ticket(
     vault.check_update_state_ok(Clock::get()?.slot, config.epoch_length())?;
     vault_staker_withdrawal_ticket.check_staker(staker.key)?;
 
-    if !vault_staker_withdrawal_ticket.is_withdrawable(Clock::get()?.slot, config.epoch_length())? {
+    if !vault_staker_withdrawal_ticket.is_withdrawable(Clock::get()?.slot, config.epoch_length())?
+        && vault_staker_withdrawal_ticket_queue.is_empty()
+    {
         msg!("Vault staker withdrawal ticket is not withdrawable");
         return Err(VaultError::VaultStakerWithdrawalTicketNotWithdrawable.into());
+    }
+
+    while let Some(entry) = vault_staker_withdrawal_ticket_queue.first() {
+        if entry.ticket.eq(vault_staker_withdrawal_ticket_info.key) {
+            vault_staker_withdrawal_ticket_queue.pop_front();
+            break;
+        } else {
+            if entry.expired_at() < Clock::get()?.unix_timestamp as u64 {
+                vault_staker_withdrawal_ticket_queue.pop_front();
+            } else {
+                break;
+            }
+        }
     }
 
     let BurnSummary {

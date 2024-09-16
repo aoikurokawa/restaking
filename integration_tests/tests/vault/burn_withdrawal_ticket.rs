@@ -553,6 +553,7 @@ mod tests {
                 &vault_staker_withdrawal_ticket,
                 &get_associated_token_address(&vault_staker_withdrawal_ticket, &vault.vrt_mint),
                 &get_associated_token_address(&vault.fee_wallet, &vault.vrt_mint),
+                &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
                 MIN_AMOUNT_OUT,
             )
             .await;

@@ -17,6 +17,7 @@ use solana_program::{
 use spl_token::state::Mint;
 
 /// Processes the create instruction: [`crate::VaultInstruction::InitializeVault`]
+#[inline(never)]
 pub fn process_initialize_vault(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -62,8 +63,6 @@ pub fn process_initialize_vault(
         return Err(VaultError::VaultFeeCapExceeded.into());
     }
 
-    let rent = Rent::get()?;
-
     // Initialize VRT mint
     {
         msg!("Initializing mint @ address {}", vrt_mint.key);
@@ -71,7 +70,7 @@ pub fn process_initialize_vault(
             &system_instruction::create_account(
                 admin.key,
                 vrt_mint.key,
-                rent.minimum_balance(Mint::get_packed_len()),
+                Rent::get()?.minimum_balance(Mint::get_packed_len()),
                 Mint::get_packed_len() as u64,
                 token_program.key,
             ),

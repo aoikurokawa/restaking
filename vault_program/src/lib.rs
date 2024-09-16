@@ -15,6 +15,7 @@ mod initialize_vault_ncn_slasher_operator_ticket;
 mod initialize_vault_ncn_slasher_ticket;
 mod initialize_vault_ncn_ticket;
 mod initialize_vault_operator_delegation;
+mod initialize_vault_staker_withdrawal_ticket_queue;
 mod initialize_vault_update_state_tracker;
 mod initialize_vault_with_mint;
 mod mint_to;
@@ -55,6 +56,7 @@ use crate::{
     initialize_vault_ncn_slasher_ticket::process_initialize_vault_ncn_slasher_ticket,
     initialize_vault_ncn_ticket::process_initialize_vault_ncn_ticket,
     initialize_vault_operator_delegation::process_initialize_vault_operator_delegation,
+    initialize_vault_staker_withdrawal_ticket_queue::process_initialize_vault_staker_withdrawal_ticket_queue,
     initialize_vault_update_state_tracker::process_initialize_vault_update_state_tracker,
     initialize_vault_with_mint::process_initialize_vault_with_mint, mint_to::process_mint,
     set_admin::process_set_admin, set_capacity::process_set_deposit_capacity,
@@ -118,6 +120,10 @@ pub fn process_instruction(
                 decimals,
             )
         }
+        // VaultInstruction::InitializeVaultStakerWithdrawalTicketQueue => {
+        //     msg!("Instruction: InitializeVaultStakerWithdrawalTicketQueue");
+        //     process_initialize_vault_staker_withdrawal_ticket_queue(program_id, accounts)
+        // }
         VaultInstruction::InitializeVaultWithMint => {
             msg!("Instruction: InitializeVaultWithMint");
             process_initialize_vault_with_mint(program_id, accounts)

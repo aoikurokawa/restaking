@@ -11,6 +11,7 @@ use jito_vault_core::{
     vault_ncn_slasher_ticket::VaultNcnSlasherTicket, vault_ncn_ticket::VaultNcnTicket,
     vault_operator_delegation::VaultOperatorDelegation,
     vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue,
     vault_update_state_tracker::VaultUpdateStateTracker,
 };
 use jito_vault_sdk::{
@@ -51,6 +52,7 @@ use crate::fixtures::{TestError, TestResult};
 pub struct VaultRoot {
     pub vault_pubkey: Pubkey,
     pub vault_admin: Keypair,
+    pub vault_staker_withdrawal_ticket_queue_pubkey: Pubkey,
 }
 
 impl Debug for VaultRoot {
@@ -282,9 +284,18 @@ impl VaultProgramClient {
         decimals: u8,
     ) -> Result<VaultRoot, TestError> {
         let vault_base = Keypair::new();
+        let vault_staker_withdrawal_ticket_queue_base = Keypair::new();
 
         let vault_pubkey =
             Vault::find_program_address(&jito_vault_program::id(), &vault_base.pubkey()).0;
+
+        let vault_staker_withdrawal_ticket_queue_pubkey =
+            VaultStakerWithdrawalTicketQueue::find_program_address(
+                &jito_vault_program::id(),
+                &vault_pubkey,
+                &vault_staker_withdrawal_ticket_queue_base.pubkey(),
+            )
+            .0;
 
         let vrt_mint = Keypair::new();
         let vault_admin = Keypair::new();
@@ -316,6 +327,7 @@ impl VaultProgramClient {
         Ok(VaultRoot {
             vault_admin,
             vault_pubkey,
+            vault_staker_withdrawal_ticket_queue_pubkey,
         })
     }
 
@@ -919,6 +931,7 @@ impl VaultProgramClient {
             depositor,
             &depositor_vrt_token_account,
             &base,
+            &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
             amount,
         )
         .await?;
@@ -1160,6 +1173,7 @@ impl VaultProgramClient {
         staker: &Keypair,
         staker_vrt_token_account: &Pubkey,
         base: &Keypair,
+        vault_staker_withdrawal_ticket_queue: &Pubkey,
         amount: u64,
     ) -> Result<(), TestError> {
         let blockhash = self.banks_client.get_latest_blockhash().await?;
@@ -1172,6 +1186,7 @@ impl VaultProgramClient {
                 vault_staker_withdrawal_ticket_token_account,
                 &staker.pubkey(),
                 staker_vrt_token_account,
+                vault_staker_withdrawal_ticket_queue,
                 &base.pubkey(),
                 amount,
             )],
@@ -1207,6 +1222,7 @@ impl VaultProgramClient {
             &vault_staker_withdrawal_ticket,
             &get_associated_token_address(&vault_staker_withdrawal_ticket, &vault.vrt_mint),
             &get_associated_token_address(&vault.fee_wallet, &vault.vrt_mint),
+            &vault_root.vault_staker_withdrawal_ticket_queue_pubkey,
             min_amount_out,
         )
         .await?;
@@ -1225,6 +1241,7 @@ impl VaultProgramClient {
         vault_staker_withdrawal_ticket: &Pubkey,
         vault_staker_withdrawal_ticket_token_account: &Pubkey,
         vault_fee_token_account: &Pubkey,
+        vault_stakerwithdrawal_ticket_queue_pubkey: &Pubkey,
         min_amount_out: u64,
     ) -> Result<(), TestError> {
         let blockhash = self.banks_client.get_latest_blockhash().await?;
@@ -1240,6 +1257,7 @@ impl VaultProgramClient {
                 vault_staker_withdrawal_ticket,
                 vault_staker_withdrawal_ticket_token_account,
                 vault_fee_token_account,
+                vault_stakerwithdrawal_ticket_queue_pubkey,
                 min_amount_out,
             )],
             Some(&self.payer.pubkey()),
