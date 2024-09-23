@@ -14,3 +14,4 @@ borsh = { workspace = true }
 bytemuck = { workspace = true }
 jito-account-traits-derive = { workspace = true }
 solana-program = { workspace = true }
+thiserror = { workspace = true }
