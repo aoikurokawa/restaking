@@ -798,36 +798,6 @@ impl VaultProgramClient {
         tx.partial_sign(&[expired_queue_base], blockhash);
 
         self._process_transaction(&tx).await
-
-        // self._process_transaction(&Transaction::new_signed_with_payer(
-        //     &[initialize_vault(
-        //         &jito_vault_program::id(),
-        //         &config,
-        //         &vault,
-        //         &vrt_mint.pubkey(),
-        //         &token_mint.pubkey(),
-        //         &vault_admin.pubkey(),
-        //         &vault_base.pubkey(),
-        //         &withdrawal_queue,
-        //         &withdrawal_queue_base.pubkey(),
-        //         &expired_queue,
-        //         &expired_queue_base.pubkey(),
-        //         deposit_fee_bps,
-        //         withdrawal_fee_bps,
-        //         reward_fee_bps,
-        //         decimals,
-        //     )],
-        //     Some(&vault_admin.pubkey()),
-        //     &[
-        //         vault_admin,
-        //         vrt_mint,
-        //         vault_base,
-        //         withdrawal_queue_base,
-        //         expired_queue_base,
-        //     ],
-        //     blockhash,
-        // ))
-        // .await
     }
 
     pub async fn initialize_vault_ncn_ticket(

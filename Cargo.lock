@@ -2358,7 +2358,6 @@ dependencies = [
  "bytemuck",
  "jito-account-traits-derive",
  "solana-program",
- "thiserror",
 ]
 
 [[package]]
