@@ -54,6 +54,22 @@ pub trait AccountDeserialize: Sized + Pod + Discriminator {
         }
         bytemuck::try_from_bytes_mut(&mut data[8..]).map_err(|_| ProgramError::InvalidAccountData)
     }
+
+    // fn load_mut(data: RefCell<&mut [u8]>) -> Result<RefMut<Self>, ProgramError> {
+    //     let mut data_borrowed = data.borrow_mut();
+    //     if data_borrowed.first() != Some(&Self::DISCRIMINATOR) {
+    //         msg!(
+    //             "Discriminator is invalid; expected {}, got {}",
+    //             Self::DISCRIMINATOR,
+    //             data_borrowed.first().unwrap()
+    //         );
+    //         return Err(ProgramError::InvalidAccountData);
+    //     }
+
+    //     Ok(RefMut::map(data_borrowed, |data| {
+    //         bytemuck::from_bytes_mut(&mut data[8..])
+    //     }))
+    // }
 }
 
 /// On-chain size of a `Pod` type

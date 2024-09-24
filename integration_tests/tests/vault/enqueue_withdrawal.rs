@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use jito_vault_core::config::Config;
+    use jito_vault_core::{
+        config::Config, vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    };
     use jito_vault_sdk::error::VaultError;
     use solana_sdk::signature::{Keypair, Signer};
     use spl_associated_token_account::get_associated_token_address;
@@ -139,6 +141,18 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(vault.vrt_enqueued_for_cooldown_amount(), amount_to_dequeue);
+
+        let ticket = VaultStakerWithdrawalTicket::find_program_address(
+            &jito_vault_program::id(),
+            &vault_root.vault_pubkey,
+            &base,
+        )
+        .0;
+        let queue = vault_program_client
+            .get_vault_staker_withdrawal_ticket_queue(&vault_root.withdrawal_queue_pubkey)
+            .await
+            .unwrap();
+        assert_eq!(queue.tickets.first().unwrap().ticket, ticket);
     }
 
     #[tokio::test]

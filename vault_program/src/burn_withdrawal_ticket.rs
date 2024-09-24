@@ -9,6 +9,8 @@ use jito_vault_core::{
     config::Config,
     vault::{BurnSummary, Vault},
     vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    vault_staker_withdrawal_ticket_expired_queue::VaultStakerWithdrawalTicketExpiredQueue,
+    vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue,
 };
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
@@ -26,8 +28,8 @@ pub fn process_burn_withdrawal_ticket(
     accounts: &[AccountInfo],
     min_amount_out: u64,
 ) -> ProgramResult {
-    let (required_accounts, optional_accounts) = accounts.split_at(11);
-    let [config, vault_info, vault_token_account, vrt_mint, staker, staker_token_account, vault_staker_withdrawal_ticket_info, vault_staker_withdrawal_ticket_token_account, vault_fee_token_account, token_program, system_program] =
+    let (required_accounts, optional_accounts) = accounts.split_at(13);
+    let [config, vault_info, vault_token_account, vrt_mint, staker, staker_token_account, vault_staker_withdrawal_ticket_info, vault_staker_withdrawal_ticket_token_account, vault_fee_token_account, withdrwal_queue_info, expired_queue_info, token_program, system_program] =
         required_accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -59,8 +61,39 @@ pub fn process_burn_withdrawal_ticket(
         &vault.vrt_mint,
     )?;
     load_associated_token_account(vault_fee_token_account, &vault.fee_wallet, &vault.vrt_mint)?;
+    VaultStakerWithdrawalTicketQueue::load(program_id, withdrwal_queue_info, true)?;
+    let mut withdrawal_queue_data = withdrwal_queue_info.data.borrow_mut();
+    let withdrawal_queue =
+        VaultStakerWithdrawalTicketQueue::try_from_slice_unchecked_mut(&mut withdrawal_queue_data)?;
+    VaultStakerWithdrawalTicketExpiredQueue::load(program_id, expired_queue_info, true)?;
+    let mut expired_queue_data = expired_queue_info.data.borrow_mut();
+    let expired_queue = VaultStakerWithdrawalTicketExpiredQueue::try_from_slice_unchecked_mut(
+        &mut expired_queue_data,
+    )?;
     load_token_program(token_program)?;
     load_system_program(system_program)?;
+
+    loop {
+        match withdrawal_queue.first() {
+            Some(first_ticket_entry)
+                if first_ticket_entry.ticket == *vault_staker_withdrawal_ticket_info.key =>
+            {
+                withdrawal_queue.pop_front();
+                break;
+            }
+            Some(first_ticket_entry) => {
+                if first_ticket_entry.expired_at() < Clock::get()?.unix_timestamp as u64 {
+                    expired_queue.push_back(first_ticket_entry.ticket);
+                    continue;
+                } else {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+            }
+            _ => {
+                return Err(ProgramError::InvalidAccountData);
+            }
+        }
+    }
 
     vault.check_mint_burn_admin(optional_accounts.first())?;
     vault.check_vrt_mint(vrt_mint.key)?;

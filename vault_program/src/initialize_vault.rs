@@ -7,7 +7,11 @@ use jito_jsm_core::{
         load_signer, load_system_account, load_system_program, load_token_mint, load_token_program,
     },
 };
-use jito_vault_core::{config::Config, vault::Vault, MAX_FEE_BPS};
+use jito_vault_core::{
+    config::Config, vault::Vault,
+    vault_staker_withdrawal_ticket_expired_queue::VaultStakerWithdrawalTicketExpiredQueue,
+    vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue, MAX_FEE_BPS,
+};
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
@@ -25,7 +29,8 @@ pub fn process_initialize_vault(
     reward_fee_bps: u16,
     decimals: u8,
 ) -> ProgramResult {
-    let [config, vault, vrt_mint, mint, admin, base, system_program, token_program] = accounts
+    let [config, vault, vrt_mint, mint, admin, base, withdrawal_queue_info, withdrawal_queue_base, expired_queue_info, expired_queue_base, system_program, token_program] =
+        accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
@@ -118,6 +123,65 @@ pub fn process_initialize_vault(
             reward_fee_bps,
             vault_bump,
         );
+    }
+
+    let (_, queue_bump, mut queue_seeds) = VaultStakerWithdrawalTicketQueue::find_program_address(
+        program_id,
+        vault.key,
+        withdrawal_queue_base.key,
+    );
+    queue_seeds.push(vec![queue_bump]);
+
+    // Initialize VaultStakerWithdrawalTicketQueue
+    {
+        msg!(
+            "Initializing vault staker withdrawal ticket queue at address {}",
+            withdrawal_queue_info.key
+        );
+        create_account(
+            admin,
+            withdrawal_queue_info,
+            system_program,
+            program_id,
+            &Rent::get()?,
+            8_u64
+                .checked_add(size_of::<VaultStakerWithdrawalTicketQueue>() as u64)
+                .unwrap(),
+            &queue_seeds,
+        )?;
+
+        let mut queue_data = withdrawal_queue_info.try_borrow_mut_data()?;
+        queue_data[0] = VaultStakerWithdrawalTicketQueue::DISCRIMINATOR;
+    }
+
+    let (_, expired_queue_bump, mut expired_queue_seeds) =
+        VaultStakerWithdrawalTicketExpiredQueue::find_program_address(
+            program_id,
+            vault.key,
+            expired_queue_base.key,
+        );
+    expired_queue_seeds.push(vec![expired_queue_bump]);
+
+    // Initialize VaultStakerWithdrawalTicketExpiredQueue
+    {
+        msg!(
+            "Initializing vault staker withdrawal ticket expired queue at address {}",
+            expired_queue_info.key
+        );
+        create_account(
+            admin,
+            expired_queue_info,
+            system_program,
+            program_id,
+            &Rent::get()?,
+            8_u64
+                .checked_add(size_of::<VaultStakerWithdrawalTicketExpiredQueue>() as u64)
+                .unwrap(),
+            &expired_queue_seeds,
+        )?;
+
+        let mut queue_data = expired_queue_info.try_borrow_mut_data()?;
+        queue_data[0] = VaultStakerWithdrawalTicketExpiredQueue::DISCRIMINATOR;
     }
 
     config.increment_num_vaults()?;

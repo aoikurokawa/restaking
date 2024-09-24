@@ -9,7 +9,12 @@ use jito_jsm_core::{
     },
 };
 use jito_vault_core::{
-    config::Config, vault::Vault, vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    config::Config,
+    vault::Vault,
+    vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
+    vault_staker_withdrawal_ticket_queue::{
+        VaultStakerWithdrawalTicketEntry, VaultStakerWithdrawalTicketQueue,
+    },
 };
 use jito_vault_sdk::error::VaultError;
 use solana_program::{
@@ -33,9 +38,9 @@ pub fn process_enqueue_withdrawal(
     accounts: &[AccountInfo],
     vrt_amount: u64,
 ) -> ProgramResult {
-    let (required_accounts, optional_accounts) = accounts.split_at(9);
+    let (required_accounts, optional_accounts) = accounts.split_at(10);
 
-    let [config, vault_info, vault_staker_withdrawal_ticket, vault_staker_withdrawal_ticket_token_account, staker, staker_vrt_token_account, base, token_program, system_program] =
+    let [config, vault_info, vault_staker_withdrawal_ticket, vault_staker_withdrawal_ticket_token_account, staker, staker_vrt_token_account, base, queue_info, token_program, system_program] =
         required_accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -56,6 +61,9 @@ pub fn process_enqueue_withdrawal(
     load_signer(staker, false)?;
     load_associated_token_account(staker_vrt_token_account, staker.key, &vault.vrt_mint)?;
     load_signer(base, false)?;
+    VaultStakerWithdrawalTicketQueue::load(program_id, queue_info, true)?;
+    let mut queue_data = queue_info.data.borrow_mut();
+    let queue = VaultStakerWithdrawalTicketQueue::try_from_slice_unchecked_mut(&mut queue_data)?;
     load_token_program(token_program)?;
     load_system_program(system_program)?;
 
@@ -130,6 +138,12 @@ pub fn process_enqueue_withdrawal(
             staker.clone(),
         ],
     )?;
+
+    let entry = VaultStakerWithdrawalTicketEntry::new(
+        vault_staker_withdrawal_ticket_pubkey,
+        (Clock::get()?.unix_timestamp + 1000) as u64,
+    );
+    queue.push_back(entry);
 
     Ok(())
 }

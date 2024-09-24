@@ -31,6 +31,7 @@ mod tests {
                 VaultRoot {
                     vault_pubkey,
                     vault_admin,
+                    ..
                 },
             )) => {
                 let vault = vault_program_client.get_vault(&vault_pubkey).await.unwrap();

@@ -1,45 +1,10 @@
 use bytemuck::{Pod, Zeroable};
-use jito_bytemuck::{
-    types::{PodU16, PodU64},
-    AccountDeserialize, Discriminator,
-};
-use shank::{ShankAccount, ShankType};
+use jito_bytemuck::{types::PodU16, AccountDeserialize, Discriminator};
+use shank::ShankAccount;
 use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Pod, Zeroable, ShankType)]
-#[repr(C)]
-pub struct VaultStakerWithdrawalTicketEntry {
-    /// The vault being withdrawn from
-    pub ticket: Pubkey,
-
-    /// The slot the withdrawal was enqueued
-    pub expired_at: PodU64,
-}
-
-impl VaultStakerWithdrawalTicketEntry {
-    pub fn new(ticket: Pubkey, expired_at: u64) -> Self {
-        Self {
-            ticket,
-            expired_at: PodU64::from(expired_at),
-        }
-    }
-
-    pub fn expired_at(&self) -> u64 {
-        self.expired_at.into()
-    }
-}
-
-impl Default for VaultStakerWithdrawalTicketEntry {
-    fn default() -> Self {
-        Self {
-            ticket: Pubkey::new_unique(),
-            expired_at: PodU64::from(0),
-        }
-    }
-}
-
-impl Discriminator for VaultStakerWithdrawalTicketQueue {
-    const DISCRIMINATOR: u8 = 10;
+impl Discriminator for VaultStakerWithdrawalTicketExpiredQueue {
+    const DISCRIMINATOR: u8 = 11;
 }
 
 /// The vault is responsible for holding tokens and minting VRT tokens
@@ -47,7 +12,7 @@ impl Discriminator for VaultStakerWithdrawalTicketQueue {
 /// It also contains several administrative functions for features inside the vault.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Pod, Zeroable, AccountDeserialize, ShankAccount)]
 #[repr(C)]
-pub struct VaultStakerWithdrawalTicketQueue {
+pub struct VaultStakerWithdrawalTicketExpiredQueue {
     /// The base account used as a PDA seed
     pub base: Pubkey,
 
@@ -56,20 +21,10 @@ pub struct VaultStakerWithdrawalTicketQueue {
     len: PodU16,
 
     /// The vault being withdrawn from
-    pub tickets: [VaultStakerWithdrawalTicketEntry; 253],
+    pub tickets: [Pubkey; 317],
 }
 
-impl VaultStakerWithdrawalTicketQueue {
-    /// Initialize a new, empty queue
-    pub fn new(base: Pubkey) -> Self {
-        Self {
-            base,
-            head: PodU16::from(0),
-            len: PodU16::from(0),
-            tickets: [VaultStakerWithdrawalTicketEntry::default(); 253],
-        }
-    }
-
+impl VaultStakerWithdrawalTicketExpiredQueue {
     pub fn head(&self) -> u16 {
         self.head.into()
     }
@@ -84,7 +39,7 @@ impl VaultStakerWithdrawalTicketQueue {
         self.len() == 0
     }
 
-    pub fn first(&self) -> Option<&VaultStakerWithdrawalTicketEntry> {
+    pub fn first(&self) -> Option<&Pubkey> {
         if self.len() == 0 {
             return None;
         }
@@ -93,7 +48,7 @@ impl VaultStakerWithdrawalTicketQueue {
     }
 
     /// Adds an entry to the back of the queue (push_back)
-    pub fn push_back(&mut self, entry: VaultStakerWithdrawalTicketEntry) {
+    pub fn push_back(&mut self, entry: Pubkey) {
         if self.len() < self.tickets.len() as u16 {
             let idx = (self.head() + self.len()) as usize % self.tickets.len();
             self.tickets[idx] = entry;
@@ -106,7 +61,7 @@ impl VaultStakerWithdrawalTicketQueue {
     }
 
     /// Removes the front element and move the haad forward
-    pub fn pop_front(&mut self) -> Option<VaultStakerWithdrawalTicketEntry> {
+    pub fn pop_front(&mut self) -> Option<Pubkey> {
         if self.len() == 0 {
             return None;
         }
@@ -124,7 +79,7 @@ impl VaultStakerWithdrawalTicketQueue {
     /// * `vault` - The vault
     fn seeds(vault: &Pubkey, base: &Pubkey) -> Vec<Vec<u8>> {
         Vec::from_iter([
-            b"ticket_queue".to_vec(),
+            b"ticket_expired_queue".to_vec(),
             vault.to_bytes().to_vec(),
             base.to_bytes().to_vec(),
         ])
@@ -166,19 +121,19 @@ impl VaultStakerWithdrawalTicketQueue {
         expect_writable: bool,
     ) -> Result<(), ProgramError> {
         if account.owner.ne(program_id) {
-            msg!("VaultStakerWithdrawalTicketQueue account has an invalid owner");
+            msg!("VaultStakerWithdrawalTicketExpiredQueue account has an invalid owner");
             return Err(ProgramError::InvalidAccountOwner);
         }
         if account.data_is_empty() {
-            msg!("VaultStakerWithdrawalTicketQueue account data is empty");
+            msg!("VaultStakerWithdrawalTicketExpiredQueue account data is empty");
             return Err(ProgramError::InvalidAccountData);
         }
         if expect_writable && !account.is_writable {
-            msg!("VaultStakerWithdrawalTicketQueue account is not writable");
+            msg!("VaultStakerWithdrawalTicketExpiredQueue account is not writable");
             return Err(ProgramError::InvalidAccountData);
         }
         if account.data.borrow()[0].ne(&Self::DISCRIMINATOR) {
-            msg!("Vault account discriminator is invalid");
+            msg!("VaultStakerWithdrawalTicketExpiredQueue account discriminator is invalid");
             return Err(ProgramError::InvalidAccountData);
         }
         // let base = Self::try_from_slice_unchecked(&account.data.borrow())?.base;

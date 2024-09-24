@@ -38,6 +38,10 @@ pub fn initialize_vault(
     token_mint: &Pubkey,
     admin: &Pubkey,
     base: &Pubkey,
+    withdrawal_queue: &Pubkey,
+    withdrawal_queue_base: &Pubkey,
+    expired_queue: &Pubkey,
+    expired_queue_base: &Pubkey,
     deposit_fee_bps: u16,
     withdrawal_fee_bps: u16,
     reward_fee_bps: u16,
@@ -50,6 +54,10 @@ pub fn initialize_vault(
         AccountMeta::new_readonly(*token_mint, false),
         AccountMeta::new(*admin, true),
         AccountMeta::new_readonly(*base, true),
+        AccountMeta::new(*withdrawal_queue, false),
+        AccountMeta::new_readonly(*withdrawal_queue_base, true),
+        AccountMeta::new(*expired_queue, false),
+        AccountMeta::new_readonly(*expired_queue_base, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
@@ -588,6 +596,7 @@ pub fn enqueue_withdraw(
     staker: &Pubkey,
     staker_vrt_token_account: &Pubkey,
     base: &Pubkey,
+    queue: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let accounts = vec![
@@ -598,6 +607,7 @@ pub fn enqueue_withdraw(
         AccountMeta::new(*staker, true),
         AccountMeta::new(*staker_vrt_token_account, false),
         AccountMeta::new_readonly(*base, true),
+        AccountMeta::new(*queue, false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
@@ -622,6 +632,8 @@ pub fn burn_withdrawal_ticket(
     vault_staker_withdrawal_ticket: &Pubkey,
     vault_staker_withdrawal_ticket_token_account: &Pubkey,
     vault_fee_token_account: &Pubkey,
+    withdrawal_queue: &Pubkey,
+    expired_queue: &Pubkey,
     min_amount_out: u64,
 ) -> Instruction {
     let accounts = vec![
@@ -634,6 +646,8 @@ pub fn burn_withdrawal_ticket(
         AccountMeta::new(*vault_staker_withdrawal_ticket, false),
         AccountMeta::new(*vault_staker_withdrawal_ticket_token_account, false),
         AccountMeta::new(*vault_fee_token_account, false),
+        AccountMeta::new(*withdrawal_queue, false),
+        AccountMeta::new(*expired_queue, false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
