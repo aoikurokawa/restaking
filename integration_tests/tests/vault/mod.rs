@@ -1,4 +1,5 @@
 mod add_delegation;
+mod burn_expired_withdrawal_ticket;
 mod burn_withdrawal_ticket;
 mod close_update_state_tracker;
 mod cooldown_delegation;

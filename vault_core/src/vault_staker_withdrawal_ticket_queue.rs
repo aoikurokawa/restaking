@@ -3,38 +3,31 @@ use jito_bytemuck::{
     types::{PodU16, PodU64},
     AccountDeserialize, Discriminator,
 };
+use jito_vault_sdk::error::VaultError;
 use shank::{ShankAccount, ShankType};
 use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Pod, Zeroable, ShankType)]
 #[repr(C)]
 pub struct VaultStakerWithdrawalTicketEntry {
-    /// The vault being withdrawn from
     pub ticket: Pubkey,
 
-    /// The slot the withdrawal was enqueued
+    pub staker: Pubkey,
+
     pub expired_at: PodU64,
 }
 
 impl VaultStakerWithdrawalTicketEntry {
-    pub fn new(ticket: Pubkey, expired_at: u64) -> Self {
+    pub fn new(ticket: Pubkey, staker: Pubkey, expired_at: u64) -> Self {
         Self {
             ticket,
+            staker,
             expired_at: PodU64::from(expired_at),
         }
     }
 
     pub fn expired_at(&self) -> u64 {
         self.expired_at.into()
-    }
-}
-
-impl Default for VaultStakerWithdrawalTicketEntry {
-    fn default() -> Self {
-        Self {
-            ticket: Pubkey::new_unique(),
-            expired_at: PodU64::from(0),
-        }
     }
 }
 
@@ -56,20 +49,10 @@ pub struct VaultStakerWithdrawalTicketQueue {
     len: PodU16,
 
     /// The vault being withdrawn from
-    pub tickets: [VaultStakerWithdrawalTicketEntry; 253],
+    pub tickets: [VaultStakerWithdrawalTicketEntry; 140],
 }
 
 impl VaultStakerWithdrawalTicketQueue {
-    /// Initialize a new, empty queue
-    pub fn new(base: Pubkey) -> Self {
-        Self {
-            base,
-            head: PodU16::from(0),
-            len: PodU16::from(0),
-            tickets: [VaultStakerWithdrawalTicketEntry::default(); 253],
-        }
-    }
-
     pub fn head(&self) -> u16 {
         self.head.into()
     }
@@ -85,7 +68,7 @@ impl VaultStakerWithdrawalTicketQueue {
     }
 
     pub fn first(&self) -> Option<&VaultStakerWithdrawalTicketEntry> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return None;
         }
 
@@ -93,29 +76,55 @@ impl VaultStakerWithdrawalTicketQueue {
     }
 
     /// Adds an entry to the back of the queue (push_back)
-    pub fn push_back(&mut self, entry: VaultStakerWithdrawalTicketEntry) {
+    pub fn push_back(&mut self, entry: VaultStakerWithdrawalTicketEntry) -> Result<(), VaultError> {
         if self.len() < self.tickets.len() as u16 {
-            let idx = (self.head() + self.len()) as usize % self.tickets.len();
-            self.tickets[idx] = entry;
-            self.len = PodU16::from(self.len() + 1);
+            let idx = self
+                .head()
+                .checked_add(self.len())
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?;
+            self.tickets[idx as usize] = entry;
+            self.len = PodU16::from(self.len().checked_add(1).ok_or(VaultError::VaultOverflow)?);
         } else {
-            self.head = PodU16::from((self.head() + 1) % self.tickets.len() as u16);
-            let idx = (self.head() + self.len() - 1) as usize % self.tickets.len();
-            self.tickets[idx] = entry;
+            self.head = PodU16::from(
+                self.head()
+                    .checked_add(1)
+                    .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                    .ok_or(VaultError::VaultUnderflow)?,
+            );
+            let idx = self
+                .head()
+                .checked_add(self.len())
+                .and_then(|val| val.checked_sub(1))
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?;
+            self.tickets[idx as usize] = entry;
         }
+
+        Ok(())
     }
 
     /// Removes the front element and move the haad forward
-    pub fn pop_front(&mut self) -> Option<VaultStakerWithdrawalTicketEntry> {
-        if self.len() == 0 {
-            return None;
+    pub fn pop_front(&mut self) -> Result<Option<VaultStakerWithdrawalTicketEntry>, VaultError> {
+        if self.is_empty() {
+            return Ok(None);
         }
 
         let entry = self.tickets[self.head() as usize];
-        self.head = PodU16::from((self.head() + 1) % self.tickets.len() as u16);
-        self.len = PodU16::from(self.len() - 1);
 
-        Some(entry)
+        self.head = PodU16::from(
+            self.head()
+                .checked_add(1)
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?,
+        );
+        self.len = PodU16::from(
+            self.len()
+                .checked_sub(1)
+                .ok_or(VaultError::VaultUnderflow)?,
+        );
+
+        Ok(Some(entry))
     }
 
     /// Returns the seeds for the PDA

@@ -9,7 +9,9 @@ use jito_vault_core::{
     config::Config,
     vault::{BurnSummary, Vault},
     vault_staker_withdrawal_ticket::VaultStakerWithdrawalTicket,
-    vault_staker_withdrawal_ticket_expired_queue::VaultStakerWithdrawalTicketExpiredQueue,
+    vault_staker_withdrawal_ticket_expired_queue::{
+        ExpiredVaultStakerWithdrawalTicketEntry, VaultStakerWithdrawalTicketExpiredQueue,
+    },
     vault_staker_withdrawal_ticket_queue::VaultStakerWithdrawalTicketQueue,
 };
 use jito_vault_sdk::error::VaultError;
@@ -78,15 +80,21 @@ pub fn process_burn_withdrawal_ticket(
             Some(first_ticket_entry)
                 if first_ticket_entry.ticket == *vault_staker_withdrawal_ticket_info.key =>
             {
-                withdrawal_queue.pop_front();
+                withdrawal_queue.pop_front()?;
                 break;
             }
             Some(first_ticket_entry) => {
-                if first_ticket_entry.expired_at() < Clock::get()?.unix_timestamp as u64 {
-                    expired_queue.push_back(first_ticket_entry.ticket);
+                if first_ticket_entry.expired_at() < Clock::get()?.slot {
+                    let expired_entry = ExpiredVaultStakerWithdrawalTicketEntry::new(
+                        first_ticket_entry.ticket,
+                        first_ticket_entry.staker,
+                    );
+                    msg!("Hello");
+                    withdrawal_queue.pop_front()?;
+                    expired_queue.push_back(expired_entry)?;
                     continue;
                 } else {
-                    return Err(ProgramError::InvalidAccountData);
+                    return Ok(());
                 }
             }
             _ => {

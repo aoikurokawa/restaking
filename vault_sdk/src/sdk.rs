@@ -660,6 +660,37 @@ pub fn burn_withdrawal_ticket(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn burn_expired_withdrawal_ticket(
+    program_id: &Pubkey,
+    config: &Pubkey,
+    vault: &Pubkey,
+    vault_staker_withdrawal_ticket: &Pubkey,
+    vault_staker_withdrawal_ticket_token_account: &Pubkey,
+    staker: &Pubkey,
+    staker_vrt_token_account: &Pubkey,
+    queue: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*config, false),
+        AccountMeta::new(*vault, false),
+        AccountMeta::new(*vault_staker_withdrawal_ticket, false),
+        AccountMeta::new(*vault_staker_withdrawal_ticket_token_account, false),
+        AccountMeta::new(*staker, false),
+        AccountMeta::new(*staker_vrt_token_account, false),
+        AccountMeta::new(*queue, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: VaultInstruction::BurnExpiredWithdrawTicket
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
 pub fn update_vault_balance(
     program_id: &Pubkey,
     config: &Pubkey,

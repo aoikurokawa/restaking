@@ -357,6 +357,19 @@ impl Vault {
         Ok(())
     }
 
+    pub fn decrement_vrt_enqueued_for_cooldown_amount(
+        &mut self,
+        amount: u64,
+    ) -> Result<(), VaultError> {
+        let mut vrt_enqueued_for_cooldown_amount: u64 =
+            self.vrt_enqueued_for_cooldown_amount.into();
+        vrt_enqueued_for_cooldown_amount = vrt_enqueued_for_cooldown_amount
+            .checked_sub(amount)
+            .ok_or(VaultError::VaultOverflow)?;
+        self.vrt_enqueued_for_cooldown_amount = PodU64::from(vrt_enqueued_for_cooldown_amount);
+        Ok(())
+    }
+
     pub fn set_vrt_enqueued_for_cooldown_amount(&mut self, amount: u64) {
         self.vrt_enqueued_for_cooldown_amount = PodU64::from(amount);
     }

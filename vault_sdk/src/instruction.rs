@@ -190,6 +190,18 @@ pub enum VaultInstruction {
         min_amount_out: u64
     },
 
+    #[account(0, name = "config")]
+    #[account(1, writable, name = "vault")]
+    #[account(2, writable, name = "vault_staker_withdrawal_ticket")]
+    #[account(3, writable, name = "vault_staker_withdrawal_ticket_token_account")]
+    #[account(4, writable, name = "staker")]
+    #[account(5, writable, name = "staker_vrt_token_account")]
+    #[account(6, writable, name = "expired_queue")]
+    #[account(7, name = "token_program")]
+    #[account(8, name = "system_program")]
+    #[account(9, signer, optional, name = "burn_signer", description = "Signer for burning")]
+    BurnExpiredWithdrawTicket,
+
     /// Sets the max tokens that can be deposited into the VRT
     #[account(0, name = "config")]
     #[account(1, writable, name = "vault")]

@@ -1,7 +1,22 @@
 use bytemuck::{Pod, Zeroable};
 use jito_bytemuck::{types::PodU16, AccountDeserialize, Discriminator};
-use shank::ShankAccount;
+use jito_vault_sdk::error::VaultError;
+use shank::{ShankAccount, ShankType};
 use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Pod, Zeroable, ShankType)]
+#[repr(C)]
+pub struct ExpiredVaultStakerWithdrawalTicketEntry {
+    pub ticket: Pubkey,
+
+    pub staker: Pubkey,
+}
+
+impl ExpiredVaultStakerWithdrawalTicketEntry {
+    pub const fn new(ticket: Pubkey, staker: Pubkey) -> Self {
+        Self { ticket, staker }
+    }
+}
 
 impl Discriminator for VaultStakerWithdrawalTicketExpiredQueue {
     const DISCRIMINATOR: u8 = 11;
@@ -20,8 +35,7 @@ pub struct VaultStakerWithdrawalTicketExpiredQueue {
 
     len: PodU16,
 
-    /// The vault being withdrawn from
-    pub tickets: [Pubkey; 317],
+    pub tickets: [ExpiredVaultStakerWithdrawalTicketEntry; 158],
 }
 
 impl VaultStakerWithdrawalTicketExpiredQueue {
@@ -39,8 +53,8 @@ impl VaultStakerWithdrawalTicketExpiredQueue {
         self.len() == 0
     }
 
-    pub fn first(&self) -> Option<&Pubkey> {
-        if self.len() == 0 {
+    pub fn first(&self) -> Option<&ExpiredVaultStakerWithdrawalTicketEntry> {
+        if self.is_empty() {
             return None;
         }
 
@@ -48,29 +62,59 @@ impl VaultStakerWithdrawalTicketExpiredQueue {
     }
 
     /// Adds an entry to the back of the queue (push_back)
-    pub fn push_back(&mut self, entry: Pubkey) {
+    pub fn push_back(
+        &mut self,
+        entry: ExpiredVaultStakerWithdrawalTicketEntry,
+    ) -> Result<(), VaultError> {
         if self.len() < self.tickets.len() as u16 {
-            let idx = (self.head() + self.len()) as usize % self.tickets.len();
-            self.tickets[idx] = entry;
-            self.len = PodU16::from(self.len() + 1);
+            let idx = self
+                .head()
+                .checked_add(self.len())
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?;
+            self.tickets[idx as usize] = entry;
+            self.len = PodU16::from(self.len().checked_add(1).ok_or(VaultError::VaultOverflow)?);
         } else {
-            self.head = PodU16::from((self.head() + 1) % self.tickets.len() as u16);
-            let idx = (self.head() + self.len() - 1) as usize % self.tickets.len();
-            self.tickets[idx] = entry;
+            self.head = PodU16::from(
+                self.head()
+                    .checked_add(1)
+                    .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                    .ok_or(VaultError::VaultUnderflow)?,
+            );
+            let idx = self
+                .head()
+                .checked_add(self.len())
+                .and_then(|val| val.checked_sub(1))
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?;
+            self.tickets[idx as usize] = entry;
         }
+
+        Ok(())
     }
 
     /// Removes the front element and move the haad forward
-    pub fn pop_front(&mut self) -> Option<Pubkey> {
-        if self.len() == 0 {
-            return None;
+    pub fn pop_front(
+        &mut self,
+    ) -> Result<Option<ExpiredVaultStakerWithdrawalTicketEntry>, VaultError> {
+        if self.is_empty() {
+            return Ok(None);
         }
 
         let entry = self.tickets[self.head() as usize];
-        self.head = PodU16::from((self.head() + 1) % self.tickets.len() as u16);
-        self.len = PodU16::from(self.len() - 1);
+        self.head = PodU16::from(
+            self.head()
+                .checked_add(1)
+                .and_then(|val| val.checked_rem(self.tickets.len() as u16))
+                .ok_or(VaultError::VaultUnderflow)?,
+        );
+        self.len = PodU16::from(
+            self.len()
+                .checked_sub(1)
+                .ok_or(VaultError::VaultUnderflow)?,
+        );
 
-        Some(entry)
+        Ok(Some(entry))
     }
 
     /// Returns the seeds for the PDA

@@ -172,6 +172,19 @@ impl VaultProgramClient {
         Ok(queue)
     }
 
+    pub async fn get_vault_staker_withdrawal_ticket_expired_queue(
+        &mut self,
+        account: &Pubkey,
+    ) -> Result<VaultStakerWithdrawalTicketExpiredQueue, TestError> {
+        let account = self.banks_client.get_account(*account).await?.unwrap();
+        let queue = VaultStakerWithdrawalTicketExpiredQueue::try_from_slice_unchecked(
+            &mut account.data.as_slice(),
+        )?
+        .clone();
+
+        Ok(queue)
+    }
+
     pub async fn get_vault_ncn_slasher_ticket(
         &mut self,
         vault: &Pubkey,
@@ -1300,6 +1313,66 @@ impl VaultProgramClient {
                 withdrawal_queue,
                 expired_queue,
                 min_amount_out,
+            )],
+            Some(&self.payer.pubkey()),
+            &[&self.payer],
+            blockhash,
+        ))
+        .await
+    }
+
+    pub async fn do_burn_expired_withdrawal_ticket(
+        &mut self,
+        vault_root: &VaultRoot,
+        staker: &Pubkey,
+        vault_staker_withdrawal_ticket_base: &Pubkey,
+    ) -> Result<(), TestError> {
+        let vault = self.get_vault(&vault_root.vault_pubkey).await.unwrap();
+        let vault_staker_withdrawal_ticket = VaultStakerWithdrawalTicket::find_program_address(
+            &jito_vault_program::id(),
+            &vault_root.vault_pubkey,
+            vault_staker_withdrawal_ticket_base,
+        )
+        .0;
+
+        let vault_staker_withdrawal_ticket_token_account =
+            get_associated_token_address(&vault_staker_withdrawal_ticket, &vault.vrt_mint);
+
+        self.burn_expired_withdrawal_ticket(
+            &Config::find_program_address(&jito_vault_program::id()).0,
+            &vault_root.vault_pubkey,
+            &vault_staker_withdrawal_ticket,
+            &vault_staker_withdrawal_ticket_token_account,
+            &staker,
+            &get_associated_token_address(&staker, &vault.vrt_mint),
+            &vault_root.expired_queue_pubkey,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn burn_expired_withdrawal_ticket(
+        &mut self,
+        config: &Pubkey,
+        vault: &Pubkey,
+        vault_staker_withdrawal_ticket: &Pubkey,
+        vault_staker_withdrawal_ticket_token_account: &Pubkey,
+        staker: &Pubkey,
+        staker_vrt_token_account: &Pubkey,
+        expired_queue: &Pubkey,
+    ) -> Result<(), TestError> {
+        let blockhash = self.banks_client.get_latest_blockhash().await?;
+        self._process_transaction(&Transaction::new_signed_with_payer(
+            &[jito_vault_sdk::sdk::burn_expired_withdrawal_ticket(
+                &jito_vault_program::id(),
+                config,
+                vault,
+                vault_staker_withdrawal_ticket,
+                vault_staker_withdrawal_ticket_token_account,
+                staker,
+                staker_vrt_token_account,
+                expired_queue,
             )],
             Some(&self.payer.pubkey()),
             &[&self.payer],

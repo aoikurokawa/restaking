@@ -1,5 +1,6 @@
 mod add_delegation;
 mod burn;
+mod burn_expired_withdrawal_ticket;
 mod burn_withdrawal_ticket;
 mod change_withdrawal_ticket_owner;
 mod close_update_state_tracker;
@@ -41,6 +42,7 @@ use solana_security_txt::security_txt;
 
 use crate::{
     add_delegation::process_add_delegation, burn::process_burn,
+    burn_expired_withdrawal_ticket::process_burn_expired_withdrawal_ticket,
     burn_withdrawal_ticket::process_burn_withdrawal_ticket,
     change_withdrawal_ticket_owner::process_change_withdrawal_ticket_owner,
     close_update_state_tracker::process_close_vault_update_state_tracker,
@@ -199,6 +201,10 @@ pub fn process_instruction(
         VaultInstruction::BurnWithdrawTicket { min_amount_out } => {
             msg!("Instruction: BurnWithdrawTicket");
             process_burn_withdrawal_ticket(program_id, accounts, min_amount_out)
+        }
+        VaultInstruction::BurnExpiredWithdrawTicket => {
+            msg!("Instruction: BurnExpiredWithdrawTicket");
+            process_burn_expired_withdrawal_ticket(program_id, accounts)
         }
         // ------------------------------------------
         // Vault-NCN operations

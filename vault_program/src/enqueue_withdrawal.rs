@@ -139,11 +139,16 @@ pub fn process_enqueue_withdrawal(
         ],
     )?;
 
+    // TODO:
     let entry = VaultStakerWithdrawalTicketEntry::new(
         vault_staker_withdrawal_ticket_pubkey,
-        (Clock::get()?.unix_timestamp + 1000) as u64,
+        *staker.key,
+        Clock::get()?
+            .slot
+            .checked_add(1000)
+            .ok_or(VaultError::VaultOverflow)?,
     );
-    queue.push_back(entry);
+    queue.push_back(entry)?;
 
     Ok(())
 }
